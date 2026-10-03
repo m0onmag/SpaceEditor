@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { fileURLToPath } = require('url');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const { Readable, Transform } = require('stream');
 const { pipeline } = require('stream/promises');
 
@@ -14,6 +14,13 @@ app.setName('SpaceEditor');
 app.setAppUserModelId('ru.moonmag.spaceeditor');
 app.commandLine.appendSwitch('disable-logging');
 app.setPath('userData', path.join(app.getPath('appData'), 'SpaceEditor'));
+const gotLock = app.requestSingleInstanceLock();
+if (!gotLock) app.quit();
+app.on('second-instance', () => {
+  if (!win || win.isDestroyed()) return;
+  if (win.isMinimized()) win.restore();
+  win.focus();
+});
 let forceClose = false, ackT;
 let pending = null, installing = false;
 
@@ -27,6 +34,17 @@ const MAX_SETTINGS_BYTES = 5 * 1024 * 1024;
 const MAX_UPDATE_BYTES = 500 * 1024 * 1024;
 
 const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+function writeAtomic(file, data) {
+  const tmp = file + '.tmp';
+  try {
+    fs.writeFileSync(tmp, data, 'utf-8');
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    try { fs.unlinkSync(tmp); } catch {}
+    throw err;
+  }
+}
 
 const isIndex = (u) => {
   try {
@@ -89,7 +107,7 @@ function readSettings() {
 function writeSettings(obj) {
   try {
     fs.mkdirSync(SETTINGS_DIR, { recursive: true });
-    fs.writeFileSync(SETTINGS_FILE, JSON.stringify(sanitizeSettings(obj), null, 2), 'utf-8');
+    writeAtomic(SETTINGS_FILE, JSON.stringify(sanitizeSettings(obj), null, 2));
     return true;
   } catch { return false; }
 }
@@ -109,7 +127,7 @@ onTrusted('notes-set', (e, obj) => {
   if (!isObj(obj)) return;
   try {
     fs.mkdirSync(SETTINGS_DIR, { recursive: true });
-    fs.writeFileSync(NOTES_FILE, JSON.stringify(sanitizeNotes(obj), null, 2), 'utf-8');
+    writeAtomic(NOTES_FILE, JSON.stringify(sanitizeNotes(obj), null, 2));
   } catch {}
 });
 
@@ -122,7 +140,7 @@ handleTrusted('export-settings', async (e, title) => {
   if (!filePath) return { ok: false, canceled: true };
   try {
     const out = { app: 'SpaceEditor', version: app.getVersion(), settings: readSettings(), notes: readNotes() };
-    fs.writeFileSync(filePath, JSON.stringify(out, null, 2), 'utf-8');
+    writeAtomic(filePath, JSON.stringify(out, null, 2));
     return { ok: true };
   } catch { return { ok: false }; }
 });
@@ -212,6 +230,16 @@ handleTrusted('check-update', async () => {
   finally { clearTimeout(timer); }
 });
 
+const psSig = (file) => new Promise((resolve) => {
+  const ps = path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  const script = "$s = Get-AuthenticodeSignature -LiteralPath $env:SE_FILE; if ($s.Status -eq 'Valid') { $s.SignerCertificate.Subject } else { '' }";
+  execFile(ps, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script], {
+    env: { ...process.env, SE_FILE: file },
+    windowsHide: true,
+    timeout: 30000
+  }, (err, out) => resolve(err ? '' : String(out).trim()));
+});
+
 handleTrusted('install-update', async () => {
   const dst = process.env.PORTABLE_EXECUTABLE_FILE || '';
   if (!pending || !dst || installing || /["\r\n]/.test(dst)) return { ok: false };
@@ -221,7 +249,8 @@ handleTrusted('install-update', async () => {
   try {
     const r = await net.fetch(pending.url, { headers: { 'User-Agent': 'SpaceEditor' } });
     if (!r.ok || !r.body) throw new Error('http');
-    if (r.url && new URL(r.url).protocol !== 'https:') throw new Error('proto');
+    const fu = new URL(r.url || pending.url);
+    if (fu.protocol !== 'https:' || !/(^|\.)(github\.com|githubusercontent\.com)$/i.test(fu.hostname)) throw new Error('proto');
     const total = pending.size || Number(r.headers.get('content-length')) || 0;
     if (!total || total > MAX_UPDATE_BYTES) throw new Error('size');
     const hash = crypto.createHash('sha256');
@@ -244,18 +273,30 @@ handleTrusted('install-update', async () => {
     fs.readSync(fd, head, 0, 2, 0);
     fs.closeSync(fd);
     if (head.toString() !== 'MZ') throw new Error('format');
+    const curSig = await psSig(dst);
+    if (curSig && (await psSig(tmp)) !== curSig) throw new Error('sig');
     const vbs = path.join(os.tmpdir(), 'spaceeditor-update-' + crypto.randomBytes(8).toString('hex') + '.vbs');
     const script = [
       'Set fso = CreateObject("Scripting.FileSystemObject")',
       'src = "' + tmp + '"',
       'dst = "' + dst + '"',
+      'bak = dst & ".old"',
       'ok = False',
       'For i = 1 To 60',
       '  On Error Resume Next',
-      '  If fso.FileExists(dst) Then fso.DeleteFile dst, True',
+      '  Err.Clear',
+      '  If fso.FileExists(bak) Then fso.DeleteFile bak, True',
+      '  Err.Clear',
+      '  fso.MoveFile dst, bak',
       '  If Err.Number = 0 Then',
+      '    Err.Clear',
       '    fso.MoveFile src, dst',
-      '    If Err.Number = 0 Then ok = True',
+      '    If Err.Number = 0 Then',
+      '      ok = True',
+      '    Else',
+      '      Err.Clear',
+      '      fso.MoveFile bak, dst',
+      '    End If',
       '  End If',
       '  Err.Clear',
       '  On Error GoTo 0',
@@ -263,6 +304,9 @@ handleTrusted('install-update', async () => {
       '  WScript.Sleep 1000',
       'Next',
       'If ok Then',
+      '  On Error Resume Next',
+      '  fso.DeleteFile bak, True',
+      '  On Error GoTo 0',
       '  CreateObject("WScript.Shell").Run Chr(34) & dst & Chr(34), 1, False',
       'Else',
       '  On Error Resume Next',
@@ -274,7 +318,7 @@ handleTrusted('install-update', async () => {
       ''
     ].join('\r\n');
     fs.writeFileSync(vbs, Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(script, 'utf16le')]), { flag: 'wx' });
-    spawn('wscript.exe', ['//B', '//Nologo', vbs], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
+    spawn(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'wscript.exe'), ['//B', '//Nologo', vbs], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
     send(100);
     setTimeout(() => { forceClose = true; app.quit(); }, 400);
     return { ok: true };
@@ -332,16 +376,16 @@ app.on('web-contents-created', (_, contents) => {
   contents.on('will-attach-webview', (e) => e.preventDefault());
 });
 
-const ownFile = (u) => typeof u === 'string' && u.startsWith('file:');
 
 app.whenReady().then(() => {
+  if (!gotLock) return;
   const ses = session.defaultSession;
   const mediaPerms = ['media', 'display-capture'];
   ses.setPermissionRequestHandler((wc, permission, cb, details) => {
-    cb(mediaPerms.includes(permission) && ownFile(details && details.requestingUrl));
+    cb(mediaPerms.includes(permission) && isIndex(details && details.requestingUrl));
   });
   ses.setPermissionCheckHandler((wc, permission, origin, details) => {
-    return mediaPerms.includes(permission) && ownFile((details && details.requestingUrl) || origin);
+    return mediaPerms.includes(permission) && isIndex(details && details.requestingUrl);
   });
   ses.setDisplayMediaRequestHandler((request, cb) => {
     const url = request && request.frame ? request.frame.url : '';
@@ -436,7 +480,7 @@ app.whenReady().then(() => {
     e.preventDefault();
     win.webContents.send('close-request');
     clearTimeout(ackT);
-    ackT = setTimeout(() => { forceClose = true; win.close(); }, 1500);
+    ackT = setTimeout(() => { forceClose = true; if (!win.isDestroyed()) win.close(); }, 1500);
   });
 });
 
@@ -458,14 +502,14 @@ handleTrusted('open-json', async (e, title) => {
 });
 
 handleTrusted('save-json', async (e, content, title) => {
-  if (typeof content !== 'string' || content.length > MAX_JSON_BYTES) return false;
+  if (typeof content !== 'string' || Buffer.byteLength(content, 'utf-8') > MAX_JSON_BYTES) return false;
   const { filePath } = await dialog.showSaveDialog(win, {
     title: String(title || 'Сохранить JSON').slice(0, 200),
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
   if (!filePath) return false;
   try {
-    fs.writeFileSync(filePath, content, 'utf-8');
+    writeAtomic(filePath, content);
     return true;
   } catch { return false; }
 });

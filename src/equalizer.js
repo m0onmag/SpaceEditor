@@ -73,7 +73,7 @@ async function startAudio(my){
 }
 
 async function revive(){
-  if(!active||starting||!an)return;
+  if(!active||starting)return;
   starting=true;const my=++sid;
   try{
     const s=await getStream();

@@ -12,14 +12,17 @@ jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: write
-      actions: read
+      contents: read
+    outputs:
+      artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -39,7 +42,6 @@ jobs:
 
       - name: Audit dependencies
         run: npm audit --audit-level=high
-        continue-on-error: true
 
       - name: Build (unsigned)
         run: npx electron-builder --win --x64 --publish never
@@ -48,47 +50,67 @@ jobs:
 
       - name: Upload unsigned artifact
         id: upload-unsigned
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SpaceEditor-unsigned
           path: dist/SpaceEditor.exe
           if-no-files-found: error
 
+  sign:
+    needs: build
+    if: vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_POLICY_SLUG != ''
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
       - name: Sign with SignPath
-        if: vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_POLICY_SLUG != ''
-        uses: signpath/github-action-submit-signing-request@v3
+        uses: signpath/github-action-submit-signing-request@f6d04783b4569d051e0c80105fe66e82819d0092 # v3
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
           organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
           project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
           signing-policy-slug: ${{ vars.SIGNPATH_POLICY_SLUG }}
-          github-artifact-id: ${{ steps.upload-unsigned.outputs.artifact-id }}
+          github-artifact-id: ${{ needs.build.outputs.artifact-id }}
           wait-for-completion: true
           wait-for-completion-timeout-in-seconds: 3600
           output-artifact-directory: signed
 
       - name: Upload signed artifact
-        if: vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_POLICY_SLUG != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: SpaceEditor-signed
           path: signed/SpaceEditor.exe
           if-no-files-found: error
 
-      - name: Publish release
-        if: github.ref_type == 'tag' && vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_POLICY_SLUG != ''
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" signed/SpaceEditor.exe --clobber
+  release:
+    needs: [build, sign]
+    if: always() && github.ref_type == 'tag' && needs.build.result == 'success' && (needs.sign.result == 'success' || needs.sign.result == 'skipped')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Download signed artifact
+        if: needs.sign.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: SpaceEditor-signed
+          path: release
 
-      - name: Publish release (unsigned)
-        if: github.ref_type == 'tag' && !(vars.SIGNPATH_ORGANIZATION_ID != '' && vars.SIGNPATH_PROJECT_SLUG != '' && vars.SIGNPATH_POLICY_SLUG != '')
+      - name: Download unsigned artifact
+        if: needs.sign.result != 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: SpaceEditor-unsigned
+          path: release
+
+      - name: Publish release
         shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
         run: |
-          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" dist/SpaceEditor.exe --clobber
+          FLAGS=""
+          if [ "${{ needs.sign.result }}" != "success" ]; then FLAGS="--prerelease"; fi
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes $FLAGS
+          gh release upload "$GITHUB_REF_NAME" release/SpaceEditor.exe --clobber

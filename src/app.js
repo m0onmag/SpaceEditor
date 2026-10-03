@@ -134,6 +134,7 @@ let notes=Object.create(null);try{Object.assign(notes,(window.api&&api.loadNotes
 const noteKey=i=>[...cmds[i].path,cmds[i].name].join('/');
 let noteT;
 function saveNotes(){clearTimeout(noteT);noteT=setTimeout(()=>{try{api.saveNotes(notes)}catch{}},400);}
+function flushNotes(){clearTimeout(noteT);try{api.saveNotes(notes)}catch{}}
 
 function flatten(arr,path){for(const o of arr){if(o.type==='command')cmds.push({path:[...path],name:o.name});else flatten(o.children||[],[...path,o.name]);}}
 function cmdAt(idx){let c=0;function w(a){for(const o of a){if(o.type==='command'){if(c===idx)return o;c++;}else{const r=w(o.children||[]);if(r)return r;}}return null;}return w(rootObj.children||[]);}
@@ -161,6 +162,7 @@ function validatePack(root){
 }
 
 async function loadJson(){
+  if(dirty&&(!window.VS||VS.warn)&&!await askConfirm(t('unsavedT'),t('unsavedLoad'),t('load')))return;
   const res=await api.openJson(t('dlgOpen'));if(!res)return;
   try{
     const obj=JSON.parse(res.data);
@@ -178,7 +180,17 @@ async function loadJson(){
     document.getElementById('btn-save').disabled=false;
     document.getElementById('btn-export').disabled=false;
     document.getElementById('btn-apply').disabled=false;
-  }catch{setMsg(t('parseErr'),'alert-triangle');}
+  }catch(err){setMsg(t(err&&(err.name==='SyntaxError'||err.message==='bad pack')?'parseErr':'loadErr'),'alert-triangle');}
+}
+
+function escClose(ov,fn){
+  const h=e=>{
+    if(e.key!=='Escape')return;
+    const a=document.querySelectorAll('.overlay');
+    if(a[a.length-1]===ov)fn();
+  };
+  document.addEventListener('keydown',h);
+  return()=>document.removeEventListener('keydown',h);
 }
 
 function askConfirm(title,text,okLabel){
@@ -230,10 +242,10 @@ async function saveJson(){
         const vf=voices.find(v=>v.name===chosen);
         return`Sound.PlayWav:Voices/${CAT_PATH[vf?.category]||''}/${chosen}`;
       });
-      ci++;return{...o,sequence:seq};
-    }return{...o,children:proc(o.children||[])};
+      ci++;return o.sequence===undefined?{...o}:{...o,sequence:seq};
+    }return o.children===undefined?{...o}:{...o,children:proc(o.children)};
   });}
-  const out={...rootObj,children:proc(rootObj.children||[])};
+  const out=rootObj.children===undefined?{...rootObj}:{...rootObj,children:proc(rootObj.children)};
   const ok=await api.saveJson(serializeLike(rawJson,rootObj,out),t('dlgSave'));
   if(ok)dirty=false;
   setMsg(ok?t('saved'):t('saveErr'),ok?'device-floppy':'alert-triangle');
@@ -411,14 +423,16 @@ function openVoiceDlg(cmdIdx,stepIdx,hint){
     </div>
   `;
   document.body.appendChild(ov);
+  const close=()=>{off();ov.remove()};
+  const off=escClose(ov,close);
   document.getElementById('vd-rand').onclick=()=>{isRandom=true;updateMode();};
   document.getElementById('vd-fix').onclick=()=>{isRandom=false;updateMode();};
   document.getElementById('vd-search').oninput=e=>{filterQ=e.target.value.toLowerCase();buildList();};
-  document.getElementById('vd-cancel').onclick=()=>ov.remove();
+  document.getElementById('vd-cancel').onclick=close;
   document.getElementById('vd-ok').onclick=()=>{
     if(!asgn[cmdIdx])asgn[cmdIdx]={};
     asgn[cmdIdx][stepIdx]={files:[...sel],isRandom};dirty=true;
-    ov.remove();renderEditor();rebuildSidebar();updateStats();
+    close();renderEditor();rebuildSidebar();updateStats();
     setMsg(sel.size?t('savedN',{f:tp('files',sel.size)}):t('voiceReset'),'microphone');
   };
   updateMode();buildList();
@@ -483,8 +497,10 @@ function openApplyAll(){
     </div>
   `;
   document.body.appendChild(ov);
+  const close=()=>{off();ov.remove()};
+  const off=escClose(ov,close);
   document.getElementById('aa-search').oninput=e=>{filterQ=e.target.value.toLowerCase();buildList();};
-  document.getElementById('aa-cancel').onclick=()=>ov.remove();
+  document.getElementById('aa-cancel').onclick=close;
   document.getElementById('aa-ok').onclick=async()=>{
     if(!sel.size)return;
     const files=[...sel];
@@ -493,7 +509,7 @@ function openApplyAll(){
     let cnt=0,ci=0;
     function walk(arr){for(const o of arr){if(o.type==='command'){(o.sequence||[]).forEach((s,si)=>{if(s.startsWith('Sound.PlayWav:')){if(!asgn[ci])asgn[ci]={};asgn[ci][si]={files,isRandom:true};cnt++;}});ci++;}else walk(o.children||[]);}}
     walk(rootObj.children||[]);dirty=true;
-    ov.remove();if(selIdx>=0)renderEditor();rebuildSidebar();updateStats();
+    close();if(selIdx>=0)renderEditor();rebuildSidebar();updateStats();
     setMsg(t('aaDone',{n:cnt,l:label}),'bolt');
   };
   buildList();
@@ -527,7 +543,7 @@ if(window.api&&api.onCloseRequest)api.onCloseRequest(async()=>{
     closing=false;
     if(!ok)return;
   }
-  api.forceClose();
+  flushNotes();api.forceClose();
 });
 
 (()=>{
