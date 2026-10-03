@@ -1,0 +1,1 @@
+(function(){try{var s=(window.api&&api.loadSettings&&api.loadSettings())||{},l=s.theme==='light'||(s.theme==='auto'&&matchMedia('(prefers-color-scheme: light)').matches);document.documentElement.dataset.theme=l?'light':'dark';document.documentElement.lang=s.lang||'ru'}catch(e){}})();

@@ -1,0 +1,44 @@
+{
+  "name": "spaceeditor",
+  "version": "1.0.0",
+  "description": "SpaceEditor",
+  "author": "m0onmag",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/m0onmag/SpaceEditor.git"
+  },
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "pack": "electron-builder --dir"
+  },
+  "devDependencies": {
+    "electron": "^44.4.5",
+    "electron-builder": "^26.15.3"
+  },
+  "build": {
+    "appId": "ru.moonmag.spaceeditor",
+    "productName": "SpaceEditor",
+    "win": {
+      "target": "portable",
+      "executableName": "SpaceEditor",
+      "artifactName": "${productName}.${ext}",
+      "icon": "assets/spaceeditor.ico"
+    },
+    "electronFuses": {
+      "runAsNode": false,
+      "enableNodeOptionsEnvironmentVariable": false,
+      "enableNodeCliInspectArguments": false,
+      "onlyLoadAppFromAsar": true,
+      "enableEmbeddedAsarIntegrityValidation": true
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "!assets/spaceeditor_2.png",
+      "package.json"
+    ]
+  }
+}

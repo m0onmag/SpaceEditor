@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src 'self'">
+<title>SpaceEditor</title>
+<style>
+@property --ang{syntax:'<angle>';inherits:true;initial-value:215deg}
+*,*::before,*::after{box-sizing:border-box}
+:root{--w:255,255,255;--t1:rgba(var(--w),.96);--t3:rgba(var(--w),.4);--bg0:#171717;--bg1:#000;
+--tint:linear-gradient(180deg,rgba(44,44,44,.5),rgba(14,14,14,.55));
+--lg-bs:inset 0 1px 1px rgba(255,255,255,.4),inset 0 -1px 1px rgba(255,255,255,.14),inset 0 0 26px rgba(255,255,255,.05);
+--rim1:rgba(255,255,255,.85);--rim2:rgba(255,255,255,.04);--rim3:rgba(255,255,255,.4);
+--sh:0 44px 120px rgba(0,0,0,.75);--bd:rgba(255,255,255,.1);
+--spring:linear(0,.2 4.5%,.62 10%,.97 16%,1.09 22%,1.1 27%,1.05 34%,1.01 42%,.99 52%,1.002 68%,1)}
+html[data-theme=light]{--w:0,0,0;--t1:rgba(var(--w),.9);--t3:rgba(var(--w),.42);--bg0:#fff;--bg1:#e4e5eb;
+--tint:linear-gradient(180deg,rgba(255,255,255,.86),rgba(246,246,250,.78));
+--lg-bs:inset 0 1px 1px rgba(255,255,255,.95),inset 0 -1px 1px rgba(255,255,255,.5),inset 0 0 26px rgba(255,255,255,.35),inset 0 0 0 1px rgba(0,0,0,.06);
+--rim1:rgba(255,255,255,1);--rim2:rgba(0,0,0,.09);--rim3:rgba(255,255,255,.9);
+--sh:0 40px 100px rgba(30,40,70,.32);--bd:rgba(0,0,0,.08)}
+html,body{height:100%;margin:0;overflow:hidden}
+body{position:relative;display:flex;align-items:center;justify-content:center;border:1px solid var(--bd);color:var(--t1);background:radial-gradient(120% 90% at 50% 0,var(--bg0),var(--bg1) 70%);font:13px/1.4 'SF Pro Display','Segoe UI Variable Display','Segoe UI',system-ui,sans-serif;letter-spacing:-.005em;-webkit-font-smoothing:antialiased;user-select:none;cursor:default}
+.halo{position:absolute;left:50%;top:50%;width:360px;height:360px;margin:-180px 0 0 -180px;border-radius:50%;background:radial-gradient(circle,rgba(var(--w),.12),transparent 65%);animation:breathe 4s ease-in-out infinite}
+@keyframes breathe{50%{transform:scale(1.18);opacity:.6}}
+.st{position:absolute;left:0;top:0;width:2px;height:2px;border-radius:50%;pointer-events:none}
+.s1{box-shadow:28px 34px rgba(var(--w),.8),74px 238px rgba(var(--w),.6),118px 62px rgba(var(--w),.7),166px 266px rgba(var(--w),.5),214px 22px rgba(var(--w),.8),318px 56px rgba(var(--w),.7),366px 250px rgba(var(--w),.5),412px 40px rgba(var(--w),.8),452px 170px rgba(var(--w),.6),40px 160px rgba(var(--w),.5),436px 262px rgba(var(--w),.6);animation:tw 3.2s ease-in-out infinite}
+.s2{box-shadow:52px 96px rgba(var(--w),.7),96px 18px rgba(var(--w),.6),130px 200px rgba(var(--w),.8),250px 280px rgba(var(--w),.5),282px 16px rgba(var(--w),.6),346px 140px rgba(var(--w),.8),396px 100px rgba(var(--w),.5),462px 60px rgba(var(--w),.7),14px 262px rgba(var(--w),.6),180px 14px rgba(var(--w),.5),330px 274px rgba(var(--w),.7);animation:tw 4.6s 1.4s ease-in-out infinite}
+@keyframes tw{50%{opacity:.15}}
+.shoot{position:absolute;width:110px;height:1.5px;border-radius:99px;background:linear-gradient(90deg,transparent,rgba(var(--w),.9));opacity:0;pointer-events:none;animation:shoot 4.2s var(--d) ease-in infinite}
+@keyframes shoot{0%{opacity:0;transform:translate(0,0) rotate(28deg)}3%{opacity:1}16%{opacity:0;transform:translate(190px,100px) rotate(28deg)}100%{opacity:0;transform:translate(190px,100px) rotate(28deg)}}
+.card{position:relative;isolation:isolate;width:296px;padding:30px 28px 26px;border-radius:38px;display:flex;flex-direction:column;align-items:center;gap:6px;box-shadow:var(--sh);animation:pop .9s var(--spring) both}
+.card::before{content:'';position:absolute;inset:0;border-radius:inherit;z-index:-1;-webkit-backdrop-filter:blur(18px) saturate(1.6);backdrop-filter:blur(18px) saturate(1.6);background:radial-gradient(170px circle at 50% -30%,rgba(255,255,255,.14),transparent 70%),var(--tint);box-shadow:var(--lg-bs)}
+.card::after{content:'';position:absolute;inset:0;border-radius:inherit;padding:1.2px;pointer-events:none;background:conic-gradient(from var(--ang),var(--rim1),var(--rim2) 22%,var(--rim3) 50%,var(--rim2) 72%,var(--rim1));-webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;animation:rim 5s linear infinite}
+@keyframes rim{to{--ang:575deg}}
+@keyframes pop{from{opacity:0;transform:scale(.86) translateY(32px)}}
+.logo{width:76px;height:76px;margin-bottom:8px;border-radius:24px;background:url(../assets/spaceeditor.png) center/175%;box-shadow:0 0 0 1px rgba(var(--w),.25),0 14px 40px rgba(0,0,0,.45);animation:float 6s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-6px) rotate(-2.5deg)}}
+.name{font-size:23px;font-weight:750;letter-spacing:-.035em;line-height:1.1;animation:in .8s .1s var(--spring) both}
+.msg{font-size:12px;color:var(--t3);animation:in .8s .2s var(--spring) both}
+.bar{width:100%;height:6px;margin-top:16px;border-radius:99px;overflow:hidden;background:rgba(var(--w),.1);box-shadow:inset 0 2px 6px rgba(0,0,0,.35),inset 0 -1px 1px rgba(255,255,255,.1);animation:in .8s .3s var(--spring) both}
+.bar i{position:relative;display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(180deg,#fff,#d9d9d9);box-shadow:0 0 14px rgba(255,255,255,.45);animation:fill 1.15s cubic-bezier(.2,.7,.2,1) forwards}
+html[data-theme=light] .bar i{background:linear-gradient(180deg,#3b3b3d,#0c0c0d);box-shadow:0 0 10px rgba(20,25,45,.3)}
+@keyframes fill{to{width:92%}}
+@keyframes in{from{opacity:0;transform:translateY(10px) scale(.96)}}
+.calm *,.calm *::before,.calm *::after{animation:none!important}
+.calm .bar i{width:100%;opacity:.5}
+</style>
+</head>
+<body>
+<div class="halo"></div>
+<div class="st s1"></div>
+<div class="st s2"></div>
+<div class="shoot" style="left:20px;top:24px;--d:.6s"></div>
+<div class="shoot" style="left:150px;top:-6px;--d:2.1s"></div>
+<div class="shoot" style="left:-30px;top:120px;--d:3.4s"></div>
+<div class="card">
+  <div class="logo"></div>
+  <div class="name">SpaceEditor</div>
+  <div class="msg" id="msg"></div>
+  <div class="bar"><i></i></div>
+</div>
+<script src="splash.js"></script>
+</body>
+</html>

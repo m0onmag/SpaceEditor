@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; media-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<title>SpaceEditor</title>
+<script src="theme-init.js"></script>
+<script src="i18n.js"></script>
+<link rel="stylesheet" href="liquid.css">
+</head>
+<body>
+
+<div id="titlebar">
+  <div class="logo-pill">
+    <i class="ti ti-waveform" aria-hidden="true"></i>
+    <span>SpaceEditor</span>
+  </div>
+  <div class="tb-spacer"></div>
+  <div class="tb-actions">
+    <button class="btn btn-ghost" id="btn-apply" disabled>
+      <i class="ti ti-bolt" aria-hidden="true"></i> <span data-i18n="apply">Применить ко всем</span>
+    </button>
+    <button class="btn btn-ghost" id="btn-load">
+      <i class="ti ti-folder-open" aria-hidden="true"></i> <span data-i18n="load">Загрузить JSON</span>
+    </button>
+    <button class="btn btn-ghost" id="btn-export" disabled>
+      <i class="ti ti-download" aria-hidden="true"></i> <span data-i18n="unload">Выгрузить</span>
+    </button>
+    <button class="btn btn-primary" id="btn-save" disabled>
+      <i class="ti ti-device-floppy" aria-hidden="true"></i> <span data-i18n="save">Сохранить</span>
+    </button>
+  </div>
+  <div style="width:10px"></div>
+  <div class="win-btns">
+    <button class="win-btn" id="btn-settings" data-i18n-title="settings" title="Настройки"><i class="ti ti-settings"></i></button>
+    <button class="win-btn" id="btn-min" data-i18n-title="minimize" title="Свернуть"><i class="ti ti-minus"></i></button>
+    <button class="win-btn" id="btn-max" data-i18n-title="maximize" title="Развернуть"><i class="ti ti-square"></i></button>
+    <button class="win-btn close" id="btn-close" data-i18n-title="close" title="Закрыть"><i class="ti ti-x"></i></button>
+  </div>
+</div>
+
+<div id="app">
+
+  <div id="sidebar">
+    <div class="search-wrap">
+      <i class="ti ti-search search-icon" aria-hidden="true"></i>
+      <input class="search-field" id="search-inp" data-i18n-ph="search" placeholder="Поиск команды…">
+    </div>
+    <div id="side-list"></div>
+  </div>
+
+  <div id="main">
+
+    <div id="empty-state">
+      <div class="empty-icon-wrap">
+        <i class="ti ti-package" aria-hidden="true"></i>
+      </div>
+      <h2 data-i18n="emptyTitle">Нет пака команд</h2>
+      <p data-i18n-html="emptyText">Загрузите JSON файл пака<br>для начала работы</p>
+      <button class="btn btn-ghost" id="btn-load-empty" style="margin-top:4px">
+        <i class="ti ti-folder-open" aria-hidden="true"></i> <span data-i18n="load">Загрузить JSON</span>
+      </button>
+    </div>
+
+    <div id="pick-state" style="display:none">
+      <div class="empty-icon-wrap">
+        <i class="ti ti-pointer" aria-hidden="true"></i>
+      </div>
+      <h2 data-i18n="pickCmdT">Команда не выбрана</h2>
+      <p data-i18n-html="pickCmd">Выберите команду в списке слева,<br>чтобы настроить озвучку</p>
+    </div>
+
+    <div id="editor">
+      <div id="editor-header">
+        <div>
+          <div class="cmd-name" id="cmd-name">-</div>
+          <div class="cmd-path" id="cmd-path">
+            <i class="ti ti-map-pin" aria-hidden="true"></i>
+            <span id="cmd-path-text">-</span>
+          </div>
+        </div>
+      </div>
+      <div id="editor-body">
+        <div id="seq-col"></div>
+        <div id="info-col"></div>
+      </div>
+    </div>
+
+    <div id="statusbar">
+      <span class="stat-i"><i class="ti ti-terminal" aria-hidden="true"></i><span id="stat-cmds">Команд: 0</span></span>
+      <span class="stat-dot"></span>
+      <span class="stat-i"><i class="ti ti-volume" aria-hidden="true"></i><span id="stat-voiced">С озвучкой: 0</span></span>
+      <span class="stat-dot"></span>
+      <span class="stat-i"><i class="ti ti-file" aria-hidden="true"></i><span id="stat-files">Файлов: 0</span></span>
+      <span id="stat-msg"></span>
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+<script src="liquid.js"></script>
+<script src="bg.js"></script>
+<script src="tree.js"></script>
+<script src="equalizer.js"></script>
+<script src="settings.js"></script>
+<script src="easter.js"></script>
+</body>
+</html>
