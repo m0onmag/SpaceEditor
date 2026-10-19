@@ -27,6 +27,7 @@ let pending = null, installing = false;
 const SETTINGS_DIR = path.join(app.getPath('appData'), 'SpaceEditor');
 const SETTINGS_FILE = path.join(SETTINGS_DIR, 'settings.json');
 const NOTES_FILE = path.join(SETTINGS_DIR, 'notes.json');
+const RECOVERY_FILE = path.join(SETTINGS_DIR, 'recovery.json');
 const INDEX_FILE = path.join(__dirname, 'index.html');
 
 const MAX_JSON_BYTES = 50 * 1024 * 1024;
@@ -64,9 +65,9 @@ const handleTrusted = (ch, fn) => ipcMain.handle(ch, (e, ...a) => {
   return fn(e, ...a);
 });
 
-const ENUMS = { lang: ['ru', 'en'], theme: ['dark', 'light', 'auto'], bg: ['live', 'lite', 'off'], rand: ['r', 'f'] };
-const NUMS = { k: [.4, 1.6], bri: [.3, 1.5], zoom: [.8, 1.4] };
-const BOOLS = ['lens', 'calm', 'first', 'warn', 'warnClose', 'confirmAll', 'top', 'perfDone', 'autoUpdate'];
+const ENUMS = { lang: ['ru', 'en'], theme: ['dark', 'light', 'auto'], bg: ['live', 'lite', 'off'], rand: ['r', 'f'], accent: ['w', 'blue', 'violet', 'pink', 'red', 'orange', 'yellow', 'green', 'teal'] };
+const NUMS = { k: [.4, 1.6], bri: [.3, 1.5], zoom: [.8, 1.4], vol: [0, 1] };
+const BOOLS = ['lens', 'calm', 'first', 'warn', 'warnClose', 'confirmAll', 'top', 'perfDone', 'autoUpdate', 'voice', 'sir', 'autosave'];
 
 function sanitizeSettings(src) {
   const o = {};
@@ -76,6 +77,7 @@ function sanitizeSettings(src) {
     if (typeof src[k] === 'number' && isFinite(src[k])) o[k] = Math.min(NUMS[k][1], Math.max(NUMS[k][0], src[k]));
   }
   for (const k of BOOLS) if (typeof src[k] === 'boolean') o[k] = src[k];
+  if (Array.isArray(src.favs)) o.favs = src.favs.filter((s) => typeof s === 'string' && s.length > 0 && s.length < 200).slice(0, 500);
   return o;
 }
 
@@ -122,6 +124,28 @@ onTrusted('settings-set', (e, obj) => {
   if (isObj(obj)) writeSettings(obj);
 });
 
+function readRecovery() {
+  try {
+    const d = readJsonSafe(RECOVERY_FILE, MAX_JSON_BYTES + MAX_SETTINGS_BYTES);
+    if (!isObj(d) || typeof d.raw !== 'string' || !isObj(d.asgn) || typeof d.ts !== 'number') return null;
+    return { raw: d.raw, asgn: d.asgn, ts: d.ts };
+  } catch { return null; }
+}
+onTrusted('recovery-get', (e) => { e.returnValue = readRecovery(); }, true);
+onTrusted('recovery-set', (e, obj) => {
+  if (!isObj(obj) || typeof obj.raw !== 'string' || !isObj(obj.asgn)) return;
+  if (Buffer.byteLength(obj.raw, 'utf-8') > MAX_JSON_BYTES) return;
+  try {
+    const asg = JSON.stringify(obj.asgn);
+    if (asg.length > MAX_SETTINGS_BYTES) return;
+    fs.mkdirSync(SETTINGS_DIR, { recursive: true });
+    writeAtomic(RECOVERY_FILE, JSON.stringify({ raw: obj.raw, asgn: obj.asgn, ts: Date.now() }));
+  } catch {}
+});
+onTrusted('recovery-clear', () => {
+  try { fs.unlinkSync(RECOVERY_FILE); } catch {}
+});
+
 onTrusted('notes-get', (e) => { e.returnValue = readNotes(); }, true);
 onTrusted('notes-set', (e, obj) => {
   if (!isObj(obj)) return;
@@ -164,15 +188,28 @@ handleTrusted('copy-text', (e, txt) => {
 });
 
 const AUDIO_MAX_BYTES = 50 * 1024 * 1024;
-handleTrusted('easter-audio', () => {
+handleTrusted('easter-audio', async () => {
   try {
     const root = path.join(__dirname, '..', 'assets');
-    const name = fs.readdirSync(root).find((f) => /\.mp3$/i.test(f));
+    const name = (await fs.promises.readdir(root)).find((f) => /\.mp3$/i.test(f));
     if (!name) return null;
     const file = path.join(root, name);
-    const st = fs.statSync(file);
+    const st = await fs.promises.stat(file);
     if (!st.isFile() || st.size > AUDIO_MAX_BYTES) return null;
-    return fs.readFileSync(file);
+    return await fs.promises.readFile(file);
+  } catch { return null; }
+});
+
+const VOICE_ROOT = path.join(__dirname, '..', 'assets', 'voices');
+handleTrusted('voice-get', async (e, name) => {
+  try {
+    if (typeof name !== 'string' || !/\.wav$/i.test(name)) return null;
+    const root = path.resolve(VOICE_ROOT);
+    const file = path.resolve(root, name);
+    if (!file.startsWith(root + path.sep)) return null;
+    const st = await fs.promises.stat(file);
+    if (!st.isFile() || st.size > 10 * 1024 * 1024) return null;
+    return await fs.promises.readFile(file);
   } catch { return null; }
 });
 
@@ -317,12 +354,17 @@ handleTrusted('install-update', async () => {
       'fso.DeleteFile WScript.ScriptFullName, True',
       ''
     ].join('\r\n');
-    fs.writeFileSync(vbs, Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(script, 'utf16le')]), { flag: 'wx' });
+    const vbsFd = fs.openSync(vbs, fs.constants.O_WRONLY | fs.constants.O_CREAT | fs.constants.O_EXCL);
+    try {
+      fs.writeSync(vbsFd, Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(script, 'utf16le')]));
+    } finally {
+      fs.closeSync(vbsFd);
+    }
     spawn(path.join(process.env.SystemRoot || 'C:\\Windows', 'System32', 'wscript.exe'), ['//B', '//Nologo', vbs], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
     send(100);
-    setTimeout(() => { forceClose = true; app.quit(); }, 400);
+    setTimeout(() => { forceClose = true; app.quit(); }, 3500);
     return { ok: true };
-  } catch (err) {
+  } catch {
     try { fs.unlinkSync(tmp); } catch {}
     installing = false;
     return { ok: false };
@@ -375,7 +417,6 @@ app.on('web-contents-created', (_, contents) => {
   contents.on('will-redirect', (e) => e.preventDefault());
   contents.on('will-attach-webview', (e) => e.preventDefault());
 });
-
 
 app.whenReady().then(() => {
   if (!gotLock) return;
@@ -448,6 +489,14 @@ app.whenReady().then(() => {
       preload: path.join(__dirname, 'preload.js')
     }
   });
+  win.webContents.on('before-input-event', (e, input) => {
+    if ((input.key === 'F12') ||
+        (input.control && input.shift && input.key === 'I') ||
+        (input.control && input.shift && input.key === 'J') ||
+        (input.control && input.key === 'U')) {
+      e.preventDefault();
+    }
+  });
   win.loadFile(INDEX_FILE);
 
   let revealed = false;
@@ -494,9 +543,9 @@ handleTrusted('open-json', async (e, title) => {
   });
   if (!filePaths.length) return null;
   try {
-    const st = fs.statSync(filePaths[0]);
+    const st = await fs.promises.stat(filePaths[0]);
     if (!st.isFile() || st.size > MAX_JSON_BYTES) return null;
-    const data = fs.readFileSync(filePaths[0], 'utf-8').replace(/^\uFEFF/, '');
+    const data = (await fs.promises.readFile(filePaths[0], 'utf-8')).replace(/^\uFEFF/, '');
     return { path: filePaths[0], data };
   } catch { return null; }
 });
@@ -507,7 +556,7 @@ handleTrusted('save-json', async (e, content, title) => {
     title: String(title || 'Сохранить JSON').slice(0, 200),
     filters: [{ name: 'JSON', extensions: ['json'] }]
   });
-  if (!filePath) return false;
+  if (!filePath) return null;
   try {
     writeAtomic(filePath, content);
     return true;

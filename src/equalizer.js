@@ -16,7 +16,7 @@ function build(){
 
 function fit(){
   const r=cv.getBoundingClientRect();
-  dpr=Math.min(devicePixelRatio||1,2);
+  dpr=Math.min(devicePixelRatio||1,window.PERF?1:2);
   W=r.width;H=r.height;grKey='';
   cv.width=Math.max(2,Math.round(W*dpr));cv.height=Math.max(2,Math.round(H*dpr));
   g.setTransform(dpr,0,0,dpr,0,0);
@@ -45,21 +45,21 @@ async function getStream(){
 }
 
 function attach(s){
-    try{ac&&ac.close()}catch{}
-    stream=s;
-    ac=new AudioContext();
-    an=ac.createAnalyser();
-    an.fftSize=4096;an.smoothingTimeConstant=.5;an.minDecibels=-85;an.maxDecibels=-18;
-    ac.createMediaStreamSource(stream).connect(an);
-    ac.resume().catch(()=>{});
-    buf=new Uint8Array(an.frequencyBinCount);
-    const bh=ac.sampleRate/an.fftSize,fmax=Math.min(FMAX,ac.sampleRate/2-100);
-    rng=[];
-    for(let k=0;k<M;k++){
-      const lo=FMIN*Math.pow(fmax/FMIN,k/M),hi=FMIN*Math.pow(fmax/FMIN,(k+1)/M);
-      const a=Math.max(1,Math.floor(lo/bh));
-      rng.push([a,Math.min(buf.length,Math.max(a+1,Math.ceil(hi/bh)))]);
-    }
+  try{ac&&ac.close()}catch{}
+  stream=s;
+  ac=new AudioContext();
+  an=ac.createAnalyser();
+  an.fftSize=window.PERF?2048:4096;an.smoothingTimeConstant=.5;an.minDecibels=-85;an.maxDecibels=-18;
+  ac.createMediaStreamSource(stream).connect(an);
+  ac.resume().catch(()=>{});
+  buf=new Uint8Array(an.frequencyBinCount);
+  const bh=ac.sampleRate/an.fftSize,fmax=Math.min(FMAX,ac.sampleRate/2-100);
+  rng=[];
+  for(let k=0;k<M;k++){
+    const lo=FMIN*Math.pow(fmax/FMIN,k/M),hi=FMIN*Math.pow(fmax/FMIN,(k+1)/M);
+    const a=Math.max(1,Math.floor(lo/bh));
+    rng.push([a,Math.min(buf.length,Math.max(a+1,Math.ceil(hi/bh)))]);
+  }
 }
 
 async function startAudio(my){
@@ -67,7 +67,7 @@ async function startAudio(my){
   try{
     const s=await getStream();
     if(!active||my!==sid){s&&s.getTracks().forEach(t=>t.stop());return}
-    if(!s)return;
+    if(!s){window.say&&say('eqFail');return}
     attach(s);
   }finally{starting=false}
 }
@@ -93,7 +93,7 @@ function stopAudio(){
 
 function frame(now){
   raf=requestAnimationFrame(frame);
-  if(silent&&now-lf<33)return;
+  if((silent||window.PERF)&&now-lf<33)return;
   lf=now;
   const t=now/1000;
   let sum=0;
@@ -124,7 +124,7 @@ function frame(now){
     shCol=`rgba(${rgb},${.7*ALPHA})`;
   }
   g.fillStyle=gr;
-  g.shadowColor=shCol;g.shadowBlur=(5+eS*15)*dpr;
+  g.shadowColor=shCol;g.shadowBlur=window.PERF?0:(5+eS*15)*dpr;
   g.beginPath();
   for(let k=0;k<M;k++){
     let v=lvl[k];

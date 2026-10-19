@@ -52,7 +52,16 @@ diamond:'<path d="M6.5 4h11L22 9.5 12 21 2 9.5z"/><path d="M2 9.5h20M9 4 7 9.5 1
 'skip-back':'<path d="M5.5 5v14"/><path d="M19 6.5v11a1 1 0 0 1-1.6.8l-7.2-5.5a1 1 0 0 1 0-1.6l7.2-5.5A1 1 0 0 1 19 6.5z"/>',
 power:'<path d="M12 3.5v8M7 6.6a7.5 7.5 0 1 0 10 0"/>',
 lifebuoy:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3.5"/><path d="m5.6 5.6 3.9 3.9M14.5 14.5l3.9 3.9M18.4 5.6l-3.9 3.9M9.5 14.5l-3.9 3.9"/>',
-copy:'<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'};
+copy:'<rect x="8" y="8" width="12" height="12" rx="3"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+keyboard:'<rect x="2.5" y="6" width="19" height="12" rx="3.5"/><path d="M6.5 10h.01M10 10h.01M14 10h.01M17.5 10h.01M8 14h8"/>',
+'arrow-back-up':'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+'arrow-forward-up':'<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/>',
+'arrows-vertical':'<path d="M12 4v16M8 8l4-4 4 4M8 16l4 4 4-4"/>',
+scale:'<path d="M7 20h10M6 6l6-1 6 1M12 3v17M9 12 6 6l-3 6a3 3 0 0 0 6 0M21 12l-3-6-3 6a3 3 0 0 0 6 0"/>',
+'chevron-down':'<path d="m6 9 6 6 6-6"/>',
+star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.6l1-5.8L3.5 9.7l5.9-.9z"/>',
+palette:'<path d="M12 21a9 9 0 1 1 9-9c0 2.5-2 3.5-4 3.5h-1.5a2 2 0 0 0-1.4 3.4c.5.6.4 2.1-2.1 2.1z"/><path stroke-width="2.6" d="M8 11h.01M11 7.5h.01M15.5 8.5h.01"/>',
+'arrows-diff':'<path d="M11 16h10M11 16l4 4M11 16l4-4M13 8H3M13 8l-4 4M13 8 9 4"/>'};
 
 function swap(root){
   const list=root.matches?.('i.ti')?[root]:[...(root.querySelectorAll?.('i.ti')||[])];

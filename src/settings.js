@@ -1,9 +1,11 @@
 (()=>{
-const D={lang:'ru',theme:'dark',bg:'live',lens:true,k:1,bri:1,calm:false,rand:'r',first:true,warn:true,warnClose:true,confirmAll:true,zoom:1,top:false,autoUpdate:true};
+const D={lang:'ru',accent:'w',autosave:true,favs:[],theme:'dark',bg:'live',lens:true,k:1,bri:1,calm:false,rand:'r',first:true,warn:true,warnClose:true,confirmAll:true,zoom:1,top:false,autoUpdate:true,voice:true,sir:true,vol:1};
 let S={...D};
 try{S={...D,...((window.api&&api.loadSettings&&api.loadSettings())||{})}}catch{}
 window.VS=S;
 const save=()=>{try{window.api&&api.saveSettings&&api.saveSettings(S)}catch{}};
+window.toggleFav=n=>{const a=Array.isArray(S.favs)?S.favs:[];S.favs=a.includes(n)?a.filter(x=>x!==n):[...a,n];save()};
+window.clearFavs=()=>{S.favs=[];save()};
 
 function detectPerf(){
   try{
@@ -23,6 +25,7 @@ function detectPerf(){
   }catch{return null}
 }
 const PERF=detectPerf();
+window.PERF=PERF;
 let perfFirst=null;
 if(S.perfDone!==true){
   if(PERF){Object.assign(S,PERF);perfFirst=PERF}
@@ -34,6 +37,7 @@ function notice(o){
     const ov=document.createElement('div');ov.className='overlay';
     ov.innerHTML=`<div class="modal" style="width:430px"><div class="modal-hdr"><i class="ti ti-alert-triangle" aria-hidden="true"></i><span class="modal-title"></span></div><div class="modal-body"><div class="desc-text"></div></div><div class="modal-ftr"><button class="btn btn-ghost" id="pn-c"></button><button class="btn btn-primary" id="pn-ok"></button></div></div>`;
     ov.querySelector('.modal-title').textContent=o.title;
+    if(o.say)say(o.say);
     ov.querySelector('.desc-text').textContent=o.text;
     ov.querySelector('#pn-ok').textContent=o.ok;
     if(o.cancel)ov.querySelector('#pn-c').textContent=o.cancel;else ov.querySelector('#pn-c').remove();
@@ -62,6 +66,8 @@ function apply(rebuild){
   b.toggle('nolens',!S.lens);b.toggle('calm',S.calm);b.toggle('bgf',S.bri!==1);
   document.documentElement.style.setProperty('--bri',S.bri);
   applyTheme();
+  window.applyAccent&&applyAccent(S.accent);
+  window.bgAccent&&bgAccent(window.ACC_CUR);
   window.LGK=S.k;
   window.bgMode&&window.bgMode(S.bg);
   if(S.lang!==curLang){curLang=S.lang;window.setLang&&window.setLang(S.lang)}
@@ -73,6 +79,7 @@ apply(S.k!==1);
 if(perfFirst){
   const list=[t(perfFirst.bg==='off'?'perf_bg_off':'perf_bg_lite'),perfFirst.lens===false?t('perf_lens'):'',perfFirst.calm?t('perf_calm'):''].filter(Boolean).join(', ');
   setTimeout(()=>notice({title:t('perfT'),text:t('perfText',{list}),ok:t('perfOk')}),700);
+  window.started.then(()=>say('lite'));
 }
 
 const fv=v=>String(v||'').replace(/^(\d+\.\d+)\.0$/,'$1');
@@ -82,10 +89,14 @@ document.title='SpaceEditor | v'+VER;
 try{api.onUpdateProgress(p=>progCb&&progCb(p))}catch{}
 const TABS=[['gen','s_gen','sliders'],['gfx','s_gfx','monitor'],['edit','s_edit','pencil'],['about','s_about','info']];
 const X=(k,tag='span')=>`<${tag} data-tx="${k}">${t(k)}</${tag}>`;
-const IC={lang:'globe',theme:'contrast',zoom:'zoom',top:'window-top',bg:'photo',bri:'sun',lens:'diamond',k:'wave',calm:'pause',rand:'microphone',first:'skip-back',confirmAll:'shield-check',warn:'download',warnClose:'power',autoUpdate:'refresh'};
+const IC={lang:'globe',theme:'contrast',zoom:'zoom',top:'window-top',bg:'photo',bri:'sun',lens:'diamond',k:'wave',calm:'pause',rand:'microphone',first:'skip-back',confirmAll:'shield-check',warn:'download',warnClose:'power',autoUpdate:'refresh',voice:'microphone',sir:'user',vol:'volume',preset:'sliders',accent:'palette',fps:'monitor',autosave:'device-floppy'};
 const ii=n=>`<i class="ti ti-${n}" aria-hidden="true"></i>`;
 const ico=k=>`<div class="set-ico"><i class="ti ti-${IC[k]}" aria-hidden="true"></i></div>`;
 const sw=k=>`<button class="sw" data-k="${k}" role="switch"></button>`;
+const PRESETS={low:{bg:'lite',lens:false,k:1,calm:true},bal:{bg:'lite',lens:true,k:1,calm:false},max:{bg:'live',lens:true,k:1,calm:false}};
+const curPreset=()=>Object.keys(PRESETS).find(n=>Object.keys(PRESETS[n]).every(k=>S[k]===PRESETS[n][k]))||'';
+const swatches=()=>`<div class="set-grp"><div class="set-row">${ico('accent')}<div>${X('s_accent','b')}${X('s_accent_d','small')}</div></div><div class="swatches" data-k="accent">${ACCENTS.map(([id,c])=>`<button class="swatch${c?'':' w'}" data-v="${id}"${c?` style="--sw:${c}"`:''} aria-label="${id}"></button>`).join('')}</div></div>`;
+const fpsRow=()=>`<div class="set-row" data-r="fps">${ico('fps')}<div>${X('s_fps','b')}<small id="fps-d">${t('fps_wait')}</small></div><div class="rc fps"><span class="fps-n" id="fps-n">--</span><span class="fps-bar"><i id="fps-f"></i></span></div></div>`;
 const expHTML=()=>`${ii('download')} ${X('s_exp')}`;
 const impHTML=()=>`${ii('folder-open')} ${X('s_imp')}`;
 const updHTML=()=>`${ii('refresh')} ${X('s_upBtn')}`;
@@ -97,25 +108,45 @@ const FL={
 };
 const grp=(k,opts)=>`<div class="set-grp"><div class="set-row">${ico(k)}<div>${X('s_'+k,'b')}${X('s_'+k+'_d','small')}</div></div><div class="mode-row segn" data-k="${k}" style="--n:${opts.length}">${opts.map(([v,l,ic])=>ic?`<button class="mode-btn" data-v="${v}">${ic}<span data-tx="${l}">${t(l)}</span></button>`:`<button class="mode-btn" data-v="${v}" data-tx="${l}">${t(l)}</button>`).join('')}</div></div>`;
 
+const kb=(...k)=>`<span style="display:flex;gap:4px;align-items:center;flex-shrink:0">${k.map(x=>`<kbd style="padding:2px 7px;border-radius:6px;border:1px solid rgba(128,128,128,.4);background:rgba(128,128,128,.12);font:inherit;font-size:11px;line-height:1.5">${x}</kbd>`).join('')}</span>`;
+const hkRow=(l,ic,...k)=>`<div class="about-row"><span class="ab-l"><i class="ti ti-${ic}" aria-hidden="true"></i>${X(l)}</span>${kb(...k)}</div>`;
+const hotkeys=()=>`<div class="set-row"><div class="set-ico"><i class="ti ti-keyboard" aria-hidden="true"></i></div><div>${X('s_hk','b')}</div></div><div class="about-list">`+
+  hkRow('s_hkSave','device-floppy','Ctrl','S')+
+  hkRow('s_hkOpen','folder-open','Ctrl','O')+
+  hkRow('s_hkFind','search','Ctrl','F')+
+  hkRow('s_hkUndo','arrow-back-up','Ctrl','Z')+
+  hkRow('s_hkRedo','arrow-forward-up','Ctrl','Y')+
+  hkRow('s_hkNav','arrows-vertical','↑','↓')+
+  hkRow('s_hkEsc','x','Esc')+
+  `</div>`;
+
 const PANES={
 gen:()=>
   grp('lang',[['ru','lang_ru',FL.ru],['en','lang_en',FL.en]])+
   grp('theme',[['dark','th_dark',ii('moon')],['light','th_light',ii('sun')],['auto','th_auto',ii('contrast')]])+
+  swatches()+
   row('zoom',rc('zoom',.8,1.4,.05))+
   row('top',sw('top'))+
-  row('autoUpdate',sw('autoUpdate')),
+  row('autoUpdate',sw('autoUpdate'))+
+  row('voice',sw('voice'))+
+  row('sir',sw('sir'))+
+  row('vol',rc('vol',0,1,.05)),
 gfx:()=>
+  grp('preset',[['low','pr_low',ii('pause')],['bal','pr_bal',ii('contrast')],['max','pr_max',ii('diamond')]])+
   grp('bg',[['live','bgLive',ii('play')],['lite','bgLite',ii('bolt')],['off','bgOff',ii('ban')]])+
+  fpsRow()+
   row('bri',rc('bri',.3,1.5,.05))+
   row('lens',sw('lens'))+
   row('k',rc('k',.4,1.6,.1))+
   row('calm',sw('calm')),
 edit:()=>
   grp('rand',[['r','random',ii('dice')],['f','fixed',ii('pin')]])+
+  row('autosave',sw('autosave'))+
   row('first',sw('first'))+
   row('confirmAll',sw('confirmAll'))+
   row('warn',sw('warn'))+
-  row('warnClose',sw('warnClose')),
+  row('warnClose',sw('warnClose'))+
+  hotkeys(),
 about:()=>{
   return `<div class="about-hero"><div class="about-logo"></div><div class="about-info"><div class="about-top"><span class="about-name">SpaceEditor</span><span class="about-ver">v${VER}</span></div>
    ${X('s_desc','div').replace('<div','<div class="desc-text about-desc"')}</div></div>
@@ -168,8 +199,7 @@ async function copyText(txt){
 }
 
 let logCache=null;
-const escH=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const inl=s=>escH(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+const inl=s=>escHtml(s).replace(/`([^`]+)`/g,'<code>$1</code>').replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
 function md(src){
   let out='',ul=false;
   const close=()=>{if(ul){out+='</ul>';ul=false}};
@@ -207,16 +237,6 @@ async function loadLog(pane){
   }
 }
 
-function cleanSettings(src){
-  const o={};
-  if(!src||typeof src!=='object'||Array.isArray(src))return o;
-  const en=(k,list)=>{if(list.includes(src[k]))o[k]=src[k]};
-  const num=(k,lo,hi)=>{if(typeof src[k]==='number'&&isFinite(src[k]))o[k]=Math.min(hi,Math.max(lo,src[k]))};
-  en('lang',['ru','en']);en('theme',['dark','light','auto']);en('bg',['live','lite','off']);en('rand',['r','f']);
-  num('k',.4,1.6);num('bri',.3,1.5);num('zoom',.8,1.4);
-  ['lens','calm','first','warn','warnClose','confirmAll','top','autoUpdate'].forEach(k=>{if(typeof src[k]==='boolean')o[k]=src[k]});
-  return o;
-}
 function mergeNotes(n){
   if(!n||typeof n!=='object'||Array.isArray(n))return;
   let ch=false;
@@ -256,12 +276,12 @@ function showUpdateToast(r){
     if(dirtyNow&&!await notice({title:t('upT'),text:t('upDirty'),ok:t('upOk'),cancel:t('cancel')}))return;
     okB._busy=true;okB.disabled=true;hideB.disabled=true;bar.hidden=false;
     const put=p=>{small.textContent=t('s_upDl',{p});fill.style.width=p+'%'};
-    progCb=put;put(0);
+    progCb=put;put(0);say('updDl');
     let i;try{i=await api.installUpdate()}catch{i=null}
     progCb=null;
-    if(i&&i.ok){small.textContent=t('s_upInst');return}
+    if(i&&i.ok){small.textContent=t('s_upInst');say('installed');return}
     okB._busy=false;okB.disabled=false;hideB.disabled=false;bar.hidden=true;
-    small.textContent=t('s_upInstErr');
+    small.textContent=t('s_upInstErr');say('instFail');
   };
   document.body.appendChild(el);
   toast=el;
@@ -271,13 +291,13 @@ async function autoCheck(){
   let r;try{r=await api.checkUpdate()}catch{r=null}
   if(!r||!r.ok||!r.update||S.autoUpdate===false)return;
   updState={k:'s_upNew',p:{v:fv(r.latest)}};
-  showUpdateToast(r);
+  showUpdateToast(r);say('newVer');
 }
 if(S.autoUpdate!==false)setTimeout(autoCheck,3000);
 
-window.openSettings=function(tab0){
+window.openSettings=function(){
   if(document.querySelector('.overlay'))return;
-  let tab=PANES[tab0]?tab0:'gen';
+  let tab='gen';
   const ov=document.createElement('div');ov.className='overlay';
   ov.innerHTML=`<div class="modal" style="width:540px;height:min(580px,86vh)">
   <div class="modal-hdr"><i class="ti ti-settings" aria-hidden="true"></i><span class="modal-title" data-tx="settings">${t('settings')}</span></div>
@@ -292,12 +312,14 @@ window.openSettings=function(tab0){
   function texts(){ov.querySelectorAll('[data-tx]').forEach(e=>e.textContent=t(e.dataset.tx))}
   function paint(){
     ov.querySelectorAll('#s-tabs .mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.t===tab));
+    ov.querySelectorAll('.swatch').forEach(b=>b.classList.toggle('on',b.dataset.v===S.accent));
     $('#s-tabs').style.setProperty('--i',TABS.findIndex(x=>x[0]===tab));
     ov.querySelectorAll('.sw[data-k]').forEach(b=>b.setAttribute('aria-checked',!!S[b.dataset.k]));
     ov.querySelectorAll('.segn[data-k]').forEach(g=>{
-      const bs=[...g.querySelectorAll('.mode-btn')],cur=String(S[g.dataset.k]);
+      const bs=[...g.querySelectorAll('.mode-btn')],cur=String(g.dataset.k==='preset'?curPreset():S[g.dataset.k]);
       bs.forEach(b=>b.classList.toggle('active',b.dataset.v===cur));
       g.style.setProperty('--i',Math.max(0,bs.findIndex(b=>b.dataset.v===cur)));
+      g.classList.toggle('none',!bs.some(b=>b.classList.contains('active')));
     });
     ov.querySelectorAll('input[type=range]').forEach(r=>{
       const k=r.dataset.k,lo=+r.min,hi=+r.max;
@@ -306,6 +328,10 @@ window.openSettings=function(tab0){
     });
     const kr=$('[data-r="k"]');
     if(kr){kr.style.opacity=S.lens?1:.4;$('input[data-k="k"]').disabled=!S.lens}
+    const vr=$('[data-r="vol"]');
+    if(vr){vr.style.opacity=S.voice?1:.4;$('input[data-k="vol"]').disabled=!S.voice}
+    const sr=$('[data-r="sir"]');
+    if(sr){sr.style.opacity=S.voice?1:.4;$('.sw[data-k="sir"]').disabled=!S.voice}
   }
   const set=(p,rb)=>{
     Object.assign(S,p);save();apply(rb);
@@ -331,6 +357,7 @@ window.openSettings=function(tab0){
       if(ex._busy)return;ex._busy=true;
       let r;try{r=await api.exportSettings(t('dlgExp'))}catch{r=null}
       if(r&&r.canceled){ex._busy=false;return}
+      if(r&&r.ok)say('setSaved');
       flash(ex,expHTML,r&&r.ok?'check':'alert-triangle',t(r&&r.ok?'s_exOk':'s_copyErr'));
     };
     const im=pane.querySelector('#s-imp');
@@ -338,10 +365,11 @@ window.openSettings=function(tab0){
       if(im._busy)return;im._busy=true;
       let r;try{r=await api.importSettings(t('dlgImp'))}catch{r=null}
       if(r&&r.canceled){im._busy=false;return}
-      if(!r||!r.ok){flash(im,impHTML,'alert-triangle',t('s_imBad'));return}
+      if(!r||!r.ok){say('badSettings');flash(im,impHTML,'alert-triangle',t('s_imBad'));return}
       if(!await notice({title:t('impT'),text:t('impText'),ok:t('impOk'),cancel:t('cancel')})){im._busy=false;return}
-      set({...cleanSettings(r.settings),perfDone:true},true);
+      set({...r.settings,perfDone:true},true);
       mergeNotes(r.notes);
+      say('setLoaded');
       flash(im,impHTML,'check',t('s_imOk'));
     };
     const sp=pane.querySelector('#s-sup');
@@ -360,7 +388,7 @@ window.openSettings=function(tab0){
     if(au)au.onclick=()=>{
       if(au._busy)return;au._busy=true;
       const fade=(txt,next)=>{au.style.opacity=0;setTimeout(()=>{au.textContent=txt;au.style.opacity=1;next&&next()},170)};
-      fade(t('s_egg'),()=>setTimeout(()=>fade(t('s_author'),()=>{au._busy=false}),2600));
+      say('egg');fade(t('s_egg'),()=>setTimeout(()=>fade(t('s_author'),()=>{au._busy=false}),2600));
     };
     const dr=pane.querySelector('#s-dir');
     if(dr)dr.onclick=()=>window.api&&api.openDataDir&&api.openDataDir();
@@ -372,34 +400,58 @@ window.openSettings=function(tab0){
       const put=(k,p)=>{updState={k,p};if(st)st.textContent=t(k,p)};
       put('s_upChecking');
       let r;try{r=await api.checkUpdate()}catch{r=null}
-      if(!r||!r.ok){up._busy=false;put('s_upErr');return}
-      if(!r.update){up._busy=false;put('s_upLatest',{v:fv(r.current)});return}
-      put('s_upNew',{v:fv(r.latest)});
+      if(!r||!r.ok){up._busy=false;put('s_upErr');say('updFail');return}
+      if(!r.update){up._busy=false;put('s_upLatest',{v:fv(r.current)});say('latest');return}
+      put('s_upNew',{v:fv(r.latest)});say('newVer');
       const dirtyNow=typeof dirty!=='undefined'&&dirty;
       const txt=r.canInstall?t('upText',{v:fv(r.latest),c:fv(r.current)})+(dirtyNow?' '+t('upDirty'):''):t('upTextWeb',{v:fv(r.latest),c:fv(r.current)});
       if(!await notice({title:t('upT'),text:txt,ok:t(r.canInstall?'upOk':'upOkWeb'),cancel:t('cancel')})){up._busy=false;return}
       if(!r.canInstall){up._busy=false;api.openLink('releases');return}
       progCb=p=>put('s_upDl',{p});
-      put('s_upDl',{p:0});
+      put('s_upDl',{p:0});say('updDl');
       let i;try{i=await api.installUpdate()}catch{i=null}
       progCb=null;
-      if(i&&i.ok){put('s_upInst');return}
-      up._busy=false;put('s_upInstErr');
+      if(i&&i.ok){put('s_upInst');say('installed');return}
+      up._busy=false;put('s_upInstErr');say('instFail');
     };
+    pane.querySelectorAll('.swatch').forEach(b=>b.onclick=()=>set({accent:b.dataset.v}));
+    const fn=pane.querySelector('#fps-n');
+    if(fn){
+      const tick=()=>{
+        const st=window.bgStat?bgStat():null,fb=pane.querySelector('#fps-f'),fd=pane.querySelector('#fps-d');
+        let txt,col='',n='--',w=0;
+        if(!st||S.bg==='off')txt=t('fps_off');
+        else if(!st.run||!st.fps)txt=t('fps_wait');
+        else{
+          const v=Math.round(st.fps),k=v>=52?'good':v>=30?'ok':'bad',q=Math.round(st.q*100);
+          n=v+' FPS';w=Math.min(1,v/60)*100;col={good:'#4ade80',ok:'#fbbf24',bad:'#f87171'}[k];
+          txt=t('fps_'+k)+(q<100?' · '+t('fps_q',{q}):'');
+        }
+        fn.textContent=n;fn.style.color=col;fd.textContent=txt;fb.style.width=w+'%';fb.style.background=col||'';
+      };
+      tick();
+      const iv=setInterval(()=>{if(!fn.isConnected){clearInterval(iv);return}tick()},500);
+    }
     pane.querySelectorAll('.sw[data-k]').forEach(b=>b.onclick=async()=>{
       const k=b.dataset.k;
-      if(k==='lens'&&!S.lens&&PERF&&!await notice({title:t('perfT'),text:t('perfLens'),ok:t('perfLiveOk'),cancel:t('cancel')}))return;
+      if(k==='lens'&&!S.lens&&PERF&&!await notice({title:t('perfT'),text:t('perfLens'),say:'weakPc',ok:t('perfLiveOk'),cancel:t('cancel')}))return;
+      if(k==='calm'&&S.calm&&PERF&&PERF.calm&&!await notice({title:t('perfT'),text:t('perfCalm'),say:'weakPc',ok:t('perfLiveOk'),cancel:t('cancel')}))return;
       set({[k]:!S[k]});
+      if(k==='sir')say('start');
     });
     pane.querySelectorAll('.segn[data-k]').forEach(g=>g.querySelectorAll('.mode-btn').forEach(b=>b.onclick=async()=>{
       const k=g.dataset.k,v=b.dataset.v;
-      if(k==='bg'&&v==='live'&&S.bg!=='live'&&PERF&&!await notice({title:t('perfT'),text:t('perfLive'),ok:t('perfLiveOk'),cancel:t('cancel')}))return;
+      if(k==='preset'){
+        if(v==='max'&&PERF&&!await notice({title:t('perfT'),text:t('perfLive'),say:'weakPc',ok:t('perfLiveOk'),cancel:t('cancel')}))return;
+        set({...PRESETS[v]},true);return;
+      }
+      if(k==='bg'&&v==='live'&&S.bg!=='live'&&PERF&&!await notice({title:t('perfT'),text:t('perfLive'),say:'weakPc',ok:t('perfLiveOk'),cancel:t('cancel')}))return;
       if(k==='theme')setTheme(v);else set({[k]:v});
     }));
     pane.querySelectorAll('input[type=range]').forEach(r=>{
       const k=r.dataset.k;
-      r.oninput=e=>{S[k]=+(+e.target.value).toFixed(2);paint();if(k==='bri')apply(false)};
-      r.onchange=()=>{save();apply(k==='k')};
+      r.oninput=e=>{S[k]=+(+e.target.value).toFixed(2);paint();if(k==='bri')apply(false);if(k==='vol')window.voiceGain()};
+      r.onchange=()=>{save();apply(k==='k');if(k==='vol')say('start')};
     });
   }
   function show(){
@@ -410,7 +462,7 @@ window.openSettings=function(tab0){
   ov.querySelectorAll('#s-tabs .mode-btn').forEach(b=>b.onclick=()=>{if(tab===b.dataset.t)return;tab=b.dataset.t;show()});
   $('#s-reset').onclick=async()=>{
     if(!await notice({title:t('resetT'),text:t('resetText'),ok:t('resetOk'),cancel:t('cancel')}))return;
-    quick(()=>set({...D,perfDone:true},true));
+    quick(()=>set({...D,favs:S.favs,perfDone:true},true));say('reset');
   };
   const close=()=>{document.removeEventListener('keydown',esc);ov.remove()};
   const esc=e=>{if(e.key==='Escape')close()};

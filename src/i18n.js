@@ -1,5 +1,6 @@
 (()=>{
 const RU={
+  diff:'Сравнение паков',diffT:'Сравнение двух паков',diffReady:'Загрузите два JSON пака для сравнения',diffNoChanges:'Паки идентичны - изменений нет',diffAdded:'Добавлено',diffRemoved:'Удалено',diffChanged:'Изменено',diffDrop:'Перетащите JSON сюда',diffLoad:'Загрузить',diffSame:'Без изменений',diffAll:'Все',diffSearch:'Поиск команды…',diffNone:'Ничего не найдено',diffSwap:'Поменять A и B',diffCollapse:'Свернуть всё',diffExpand:'Развернуть всё',
   apply:'Применить ко всем',load:'Загрузить JSON',unload:'Выгрузить',save:'Сохранить',
   settings:'Настройки',minimize:'Свернуть',maximize:'Развернуть',close:'Закрыть',
   search:'Поиск команды…',emptyTitle:'Нет пака команд',emptyText:'Загрузите JSON файл пака<br>для начала работы',
@@ -20,6 +21,11 @@ const RU={
   s_theme:'Тема',s_theme_d:'Тёмная, светлая или как в системе',th_dark:'Тёмная',th_light:'Светлая',th_auto:'Системная',
   s_zoom:'Масштаб интерфейса',s_zoom_d:'Применяется, когда отпустишь ползунок',
   s_top:'Поверх всех окон',s_top_d:'Редактор не прячется за другими окнами',
+  s_voice:'Голос программы',s_voice_d:'Короткие фразы при загрузке, сохранении и других действиях',
+  dropHint:'Отпустите файл, чтобы загрузить JSON',
+  s_hk:'Горячие клавиши',s_hkSave:'Сохранить пак',s_hkOpen:'Открыть пак',s_hkFind:'Поиск по командам',s_hkUndo:'Отменить назначение озвучки',s_hkRedo:'Повторить отменённое',s_hkNav:'Предыдущая и следующая команда',s_hkEsc:'Закрыть окно',
+  s_sir:'Обращение «сэр»',s_sir_d:'Голос говорит «сэр» в конце фраз. Если выключить, будет без обращения',
+  s_vol:'Громкость голоса',s_vol_d:'Насколько громко говорит программа. После отпускания ползунка звучит пример',
   s_autoUpdate:'Проверять обновления при запуске',s_autoUpdate_d:'Если вышла новая версия, снизу справа появится плашка',tstT:'Доступна новая версия',tstText:'Вышла версия {v}, у вас {c}. Обновить?',tstUp:'Обновить',tstHide:'Скрыть',
   s_bg:'Анимированный фон',s_bg_d:'Живой - полное качество, лёгкий - быстрее на слабых ПК',
   bgLive:'Живой',bgLite:'Лёгкий',bgOff:'Выкл',
@@ -27,6 +33,10 @@ const RU={
   s_lens:'Преломление стекла',s_lens_d:'Настоящая рефракция на краях панелей. Выключи, если тормозит',
   s_k:'Сила преломления',s_k_d:'Насколько сильно искажается фон под стеклом',
   s_calm:'Меньше анимаций',s_calm_d:'Отключает пружины и плавные появления',
+  s_accent:'Акцентный цвет',s_accent_d:'Цвет кнопок, ползунков и переключателей. Немного подкрашивает и фон',
+  s_preset:'Пресет графики',s_preset_d:'Фон, стекло и анимации одним нажатием',pr_low:'Слабый ПК',pr_bal:'Баланс',pr_max:'Максимум',
+  s_fps:'FPS фона',fps_wait:'Замеряю…',fps_off:'Фон выключен',fps_good:'ПК тянет отлично',fps_ok:'Нормально',fps_bad:'Тяжело, попробуйте пресет «Слабый ПК»',fps_q:'качество {q}%',
+  s_autosave:'Автосохранение черновика',s_autosave_d:'Пока есть несохранённые изменения, копия пишется в папку данных. После вылета предложим восстановить',recT:'Восстановить пак?',recText:'Найден несохранённый пак от {d}. Если отказаться, черновик будет удалён.',recOk:'Восстановить',recDone:'Пак восстановлен',favs:'Избранное',favClear:'Очистить',favTip:'В избранное',
   s_rand:'Озвучка по умолчанию',s_rand_d:'С каким режимом открывается выбор озвучки для нового шага',
   s_warn:'Предупреждать при выгрузке',s_warn_d:'Спрашивать, если в паке есть несохранённые изменения',
   s_first:'Открывать первую команду',s_first_d:'После загрузки пака сразу выбирается первая команда',
@@ -37,7 +47,7 @@ const RU={
   s_log:'Что нового',
   vdRandD:'При сохранении для команды выбирается один случайный файл из отмеченных.',vdFixD:'Всегда используется первый отмеченный файл.',filterPh:'Фильтр по имени или категории…',
   selN:'Выбрано: {f}',selNone:'Не выбрано',savedN:'Сохранено: {f}',voiceReset:'Озвучка сброшена',catAll:'Выбрать всё',catNone:'Снять',
-  aaDesc:'Выберите файлы озвучки. Случайный из отмеченных будет подставлен в каждый Sound.PlayWav шаг всех команд.',aaConfirm:'Выбранные файлы ({l}) будут подставлены во все шаги Sound.PlayWav всех команд. Текущий выбор будет заменён.',aaDone:'Шагов обновлено: {n} - {l}',logLoading:'Загрузка…',logErr:'Не удалось загрузить список изменений',logEmpty:'В описании релиза нет списка изменений',logNone:'Релизов пока нет',
+  aaDesc:'Выберите файлы озвучки. Случайный из отмеченных будет подставлен в каждый Sound.PlayWav шаг всех команд.',aaConfirm:'Выбранные файлы ({l}) будут подставлены во все шаги Sound.PlayWav всех команд. Текущий выбор будет заменён.',aaDone:'Шагов обновлено: {n} - {l}',logLoading:'Загрузка…',logErr:'Не удалось загрузить список изменений',logEmpty:'В описании релиза нет списка изменений',notesLimit:'Достигнут лимит заметок',
   upT:'Доступно обновление',upText:'Вышла новая версия {v}, у вас установлена {c}. Программа сама скачает её, установит и перезапустится. Обновить сейчас?',upOk:'Обновить',upDirty:'Несохранённые изменения будут потеряны.',upTextWeb:'Вышла новая версия {v}, у вас {c}. Автоустановка работает только в собранном exe. Открыть страницу загрузки на GitHub?',upOkWeb:'Открыть',
   resetT:'Сбросить все настройки?',resetText:'Язык, тема, графика и параметры редактора вернутся к значениям по умолчанию. Заметки к командам не удаляются.',resetOk:'Сбросить',
   s_desc:'Программа для настройки озвучки команд. Выбираешь команду и назначаешь ей голосовые фразы, которые она будет проигрывать.',
@@ -51,9 +61,11 @@ const RU={
   perfOk:'Понятно',
   perfLive:'У вас слабый ПК, поэтому живой фон может лагать. Лучше оставить «Лёгкий» или выключить фон. Включить живой фон всё равно?',
   perfLiveOk:'Всё равно включить',
-  perfLens:'У вас слабый ПК, поэтому преломление стекла может заметно тормозить программу. Это самая тяжёлая настройка графики. Включить всё равно?'
+  perfLens:'У вас слабый ПК, поэтому преломление стекла может заметно тормозить программу. Это самая тяжёлая настройка графики. Включить всё равно?',
+  perfCalm:'У вас слабый ПК, поэтому анимации могут лагать. Лучше оставить «Меньше анимаций» включённым. Вернуть анимации всё равно?'
 };
 const EN={
+  diff:'Compare packs',diffT:'Compare two packs',diffReady:'Load two JSON packs to compare',diffNoChanges:'Packs are identical - no changes',diffAdded:'Added',diffRemoved:'Removed',diffChanged:'Changed',diffDrop:'Drop JSON here',diffLoad:'Load',diffSame:'Unchanged',diffAll:'All',diffSearch:'Search commands…',diffNone:'Nothing found',diffSwap:'Swap A and B',diffCollapse:'Collapse all',diffExpand:'Expand all',
   apply:'Apply to all',load:'Load JSON',unload:'Unload',save:'Save',
   settings:'Settings',minimize:'Minimize',maximize:'Maximize',close:'Close',
   search:'Search commands…',emptyTitle:'No command pack',emptyText:'Load a pack JSON file<br>to get started',
@@ -74,6 +86,11 @@ const EN={
   s_theme:'Theme',s_theme_d:'Dark, light or follow the system',th_dark:'Dark',th_light:'Light',th_auto:'System',
   s_zoom:'Interface scale',s_zoom_d:'Applied when you release the slider',
   s_top:'Always on top',s_top_d:'The editor stays above other windows',
+  s_voice:'Program voice',s_voice_d:'Short spoken lines on load, save and other actions',
+  dropHint:'Drop the file to load JSON',
+  s_hk:'Keyboard shortcuts',s_hkSave:'Save pack',s_hkOpen:'Open pack',s_hkFind:'Search commands',s_hkUndo:'Undo voice assignment',s_hkRedo:'Redo',s_hkNav:'Previous and next command',s_hkEsc:'Close window',
+  s_sir:'Address as “sir”',s_sir_d:'The voice ends phrases with “sir”. Turn off to hear them without it',
+  s_vol:'Voice volume',s_vol_d:'How loud the program speaks. A sample plays when you release the slider',
   s_autoUpdate:'Check for updates on launch',s_autoUpdate_d:'A card appears in the bottom right when a new version is out',tstT:'New version available',tstText:'Version {v} is out, you have {c}. Update?',tstUp:'Update',tstHide:'Hide',
   s_bg:'Animated background',s_bg_d:'Live - full quality, Lite - faster on weak PCs',
   bgLive:'Live',bgLite:'Lite',bgOff:'Off',
@@ -81,6 +98,10 @@ const EN={
   s_lens:'Glass refraction',s_lens_d:'Real refraction on panel edges. Turn off if it lags',
   s_k:'Refraction strength',s_k_d:'How strongly the background bends under the glass',
   s_calm:'Reduce motion',s_calm_d:'Disables springs and fade-in animations',
+  s_accent:'Accent color',s_accent_d:'Color of buttons, sliders and switches. Slightly tints the background too',
+  s_preset:'Graphics preset',s_preset_d:'Background, glass and animations in one click',pr_low:'Weak PC',pr_bal:'Balanced',pr_max:'Maximum',
+  s_fps:'Background FPS',fps_wait:'Measuring…',fps_off:'Background is off',fps_good:'Your PC handles it fine',fps_ok:'Okay',fps_bad:'Heavy, try the “Weak PC” preset',fps_q:'quality {q}%',
+  s_autosave:'Draft autosave',s_autosave_d:'While there are unsaved changes, a copy is written to the data folder. After a crash we will offer to restore it',recT:'Restore the pack?',recText:'An unsaved pack from {d} was found. If you decline, the draft will be deleted.',recOk:'Restore',recDone:'Pack restored',favs:'Favorites',favClear:'Clear',favTip:'Add to favorites',
   s_rand:'Default voice mode',s_rand_d:'Mode used when choosing voices for a new step',
   s_warn:'Warn on unload',s_warn_d:'Ask when the pack has unsaved changes',
   s_first:'Open the first command',s_first_d:'Select the first command right after loading a pack',
@@ -91,7 +112,7 @@ const EN={
   s_log:'What\'s new',
   vdRandD:'One random file from the checked ones is picked when the pack is saved.',vdFixD:'The first checked file is always used.',filterPh:'Filter by name or category…',
   selN:'Selected: {f}',selNone:'Nothing selected',savedN:'Saved: {f}',voiceReset:'Voice cleared',catAll:'Select all',catNone:'Clear',
-  aaDesc:'Pick voice files. A random one of the checked files will be set on every Sound.PlayWav step of all commands.',aaConfirm:'The selected files ({l}) will be set on all Sound.PlayWav steps of all commands. The current selection will be replaced.',aaDone:'Steps updated: {n} - {l}',logLoading:'Loading…',logErr:'Could not load the changelog',logEmpty:'The release has no changelog',logNone:'No releases yet',
+  aaDesc:'Pick voice files. A random one of the checked files will be set on every Sound.PlayWav step of all commands.',aaConfirm:'The selected files ({l}) will be set on all Sound.PlayWav steps of all commands. The current selection will be replaced.',aaDone:'Steps updated: {n} - {l}',logLoading:'Loading…',logErr:'Could not load the changelog',logEmpty:'The release has no changelog',notesLimit:'Note limit reached',
   upT:'Update available',upText:'A new version {v} is available, you have {c}. The app will download it, install it and restart. Update now?',upOk:'Update',upDirty:'Unsaved changes will be lost.',upTextWeb:'A new version {v} is available, you have {c}. Auto-install only works in the built exe. Open the download page on GitHub?',upOkWeb:'Open',
   resetT:'Reset all settings?',resetText:'Language, theme, graphics and editor options will return to their defaults. Command notes are not deleted.',resetOk:'Reset',
   s_desc:'An app for setting up voice lines for commands. Pick a command and choose the voice phrases it will play.',
@@ -105,7 +126,8 @@ const EN={
   perfOk:'Got it',
   perfLive:'Your PC is weak, so the live background may lag. It is better to keep Lite or turn the background off. Enable the live background anyway?',
   perfLiveOk:'Enable anyway',
-  perfLens:'Your PC is weak, so glass refraction may noticeably slow the app down. It is the heaviest graphics setting. Enable it anyway?'
+  perfLens:'Your PC is weak, so glass refraction may noticeably slow the app down. It is the heaviest graphics setting. Enable it anyway?',
+  perfCalm:'Your PC is weak, so animations may lag. It is better to keep Reduce motion on. Bring animations back anyway?'
 };
 const PL={
   ru:{steps:['шаг','шага','шагов'],files:['файл','файла','файлов'],cmds:['команда','команды','команд']},

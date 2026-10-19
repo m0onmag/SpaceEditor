@@ -4,7 +4,7 @@ cv.style.imageRendering='auto';
 const VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.,1.);}';
 const FS=`#extension GL_OES_standard_derivatives : enable
 precision highp float;
-uniform vec2 R;uniform float T;uniform vec2 M;uniform float L;uniform float O;uniform float Z;
+uniform vec2 R;uniform float T;uniform vec2 M;uniform float L;uniform float O;uniform float Z;uniform vec3 Ac;uniform float S;
 float h(vec2 p){return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453);}
 float n(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),f.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),f.x),f.y);}
 float fbm(vec2 p){float a=.5,s=0.;mat2 r=mat2(.8,-.6,.6,.8);for(int i=0;i<6;i++){if(float(i)>=O)break;s+=a*n(p);p=r*p*2.02+7.;a*=.5;}return s;}
@@ -33,11 +33,14 @@ void main(){
   c*=1.-.55*dot(uv,uv);
   c+=(h(gl_FragCoord.xy+fract(T))-.5)*.03;
   vec3 col=vec3(max(c,0.));
-  col=mix(col,vec3(.955)-col*1.05,L);
+  vec3 dk=col*mix(vec3(1.),Ac*1.3,S);
+  vec3 lt=vec3(.955)-col*1.05*mix(vec3(1.),vec3(2.)-Ac,S*.6);
+  col=mix(dk,lt,L);
   gl_FragColor=vec4(col,1.);
 }`;
 
-let gl=null,pr=null,uR,uT,uM,uL,uO,uZ,lost=false;
+let gl=null,pr=null,uR,uT,uM,uL,uO,uZ,uAc,uS,lost=false;
+let ac=[1,1,1],acS=0,fpsAvg=0;
 
 function init(){
   gl=cv.getContext('webgl',{antialias:false,alpha:false,powerPreference:'high-performance'});
@@ -57,6 +60,7 @@ function init(){
   gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
   uR=gl.getUniformLocation(pr,'R');uT=gl.getUniformLocation(pr,'T');uM=gl.getUniformLocation(pr,'M');
   uL=gl.getUniformLocation(pr,'L');uO=gl.getUniformLocation(pr,'O');uZ=gl.getUniformLocation(pr,'Z');
+  uAc=gl.getUniformLocation(pr,'Ac');uS=gl.getUniformLocation(pr,'S');
   return true;
 }
 if(!init())return;
@@ -86,6 +90,7 @@ function render(){
   if(lost)return;
   gl.uniform2f(uR,W,H);gl.uniform1f(uT,tt);gl.uniform2f(uM,mx,my);gl.uniform1f(uL,light);
   gl.uniform1f(uO,mode==='lite'?4:6);gl.uniform1f(uZ,mode==='lite'?0:1);
+  gl.uniform3f(uAc,ac[0],ac[1],ac[2]);gl.uniform1f(uS,acS);
   gl.drawArrays(gl.TRIANGLES,0,3);
 }
 addEventListener('resize',size);size();
@@ -103,13 +108,14 @@ function frame(now){
       accT=accN=0;
     }
   }else{accT=accN=0}
+  if(dt>0&&dt<500)fpsAvg=fpsAvg?fpsAvg*.9+1000/dt*.1:1000/dt;
   tt+=Math.max(0,Math.min(dt,100))/1000;
   mx+=(tx-mx)*.06;my+=(ty-my)*.06;
   render();
 }
 function run(){
   if(raf||mode==='off'||isPaused())return;
-  last=performance.now();accT=accN=0;
+  last=performance.now();accT=accN=0;fpsAvg=0;
   raf=requestAnimationFrame(frame);
 }
 function stop(){cancelAnimationFrame(raf);raf=0}
@@ -133,6 +139,11 @@ cv.addEventListener('webglcontextrestored',()=>{
 });
 
 window.bgTheme=l=>{light=l?1:0;if(ready&&!raf&&mode!=='off')render()};
+window.bgAccent=c=>{
+  if(c){const p=c.split(',').map(Number),m=Math.max(...p);ac=p.map(v=>v/m);acS=1}else{ac=[1,1,1];acS=0}
+  if(ready&&!raf&&mode!=='off')render();
+};
+window.bgStat=()=>({fps:fpsAvg,q:QA,mode,run:!!raf&&!isPaused()});
 window.bgMode=m=>{
   if(m===mode&&(m==='off'?cv.style.display==='none':(raf||isPaused())))return;
   mode=m;stop();
